@@ -476,14 +476,11 @@ def act_factory(obs, config, uid, data, state):
 
     # A north wall is deadly for the factory. Jump if available; otherwise sidestep.
     if has_wall(wall, NORTH):
-        side = open_side_move(obs, config, col, row)
         if jump_cd == 0:
             nc, nr = col, row + 2
             if inside_board(obs, config, nc, nr):
-                landing_wall = wall_at(obs, config, nc, nr)
-                if side and scroll_buffer > 8 and has_wall(landing_wall, NORTH):
-                    return side
                 return "JUMP_NORTH"
+        side = open_side_move(obs, config, col, row)
         if side:
             return side
         return IDLE
@@ -499,17 +496,12 @@ def act_worker(obs, config, uid, data, state):
     _, col, row, energy = data[0], data[1], data[2], data[3]
     wall = wall_at(obs, config, col, row)
 
-    factory_pos = state["factory_pos"]
-    near_factory = factory_pos is not None and abs(col - factory_pos[0]) + abs(row - factory_pos[1]) <= 6
-    north_blocked = has_wall(wall, NORTH)
-    urgent_open = is_southern_risk(obs, row) or near_factory or state["factory_north_blocked"]
-
-    if north_blocked and urgent_open and energy >= config.wallRemoveCost:
-        return "REMOVE_NORTH"
-
     direct = open_side_move(obs, config, col, row)
     if direct:
         return direct
+
+    if (state["factory_blocked"] or (state["factory_north_blocked"] and not state["factory_jump_ready"])) and has_wall(wall, NORTH) and energy >= config.wallRemoveCost:
+        return "REMOVE_NORTH"
 
     target = nearest_known_target(
         obs,
@@ -612,7 +604,6 @@ def build_state(obs, config):
         "factory_blocked": False,
         "factory_north_blocked": False,
         "factory_jump_ready": False,
-        "factory_pos": None,
         "map_is_open": False,
     }
 
@@ -632,7 +623,6 @@ def build_state(obs, config):
                 state["factory_blocked"] = not safe_moves
                 state["factory_north_blocked"] = has_wall(wall_at(obs, config, col, row), NORTH)
                 state["factory_jump_ready"] = jump_cd == 0
-                state["factory_pos"] = (col, row)
                 state["map_is_open"] = NORTH in safe_moves or EAST in safe_moves or WEST in safe_moves
             elif rtype == TYPE_SCOUT:
                 state["scout_count"] += 1

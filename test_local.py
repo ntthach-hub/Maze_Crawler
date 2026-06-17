@@ -1,6 +1,6 @@
 from kaggle_environments import make
 
-def run_many(n=20):
+def run_many(n=10):
     for seed in range(n):
         env = make("crawl", configuration={"randomSeed": seed}, debug=True)
         env.run(["main.py", "random"])
